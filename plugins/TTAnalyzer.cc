@@ -4,6 +4,8 @@
 #include <cp3_llbb/TTAnalysis/interface/TTAnalyzer.h>
 #include <cp3_llbb/TTAnalysis/interface/TTDileptonCategories.h>
 
+#include <cp3_llbb/TTAnalysis/interface/topEventMinimizer.h>
+
 #include <cp3_llbb/Framework/interface/MuonsProducer.h>
 #include <cp3_llbb/Framework/interface/ElectronsProducer.h>
 #include <cp3_llbb/Framework/interface/JetsProducer.h>
@@ -819,6 +821,92 @@ void TTAnalyzer::analyze(const edm::Event& event, const edm::EventSetup& setup, 
   }
 
 after_hlt_matching:
+
+    ///////////////////////////
+    //       RECO TT         //
+    ///////////////////////////
+
+    #ifdef _TT_DEBUG_
+      std::cout << "Reconstruct TT system" << std::endl;
+    #endif
+
+    uint16_t idx_comb = LepIDIso(LepID::L, LepIso::L);
+    if (leptons_IDIso[idx_comb].size() >= 2) {
+
+    uint16_t idx_comb_b = LepIDIsoJetBWP(LepID::L, LepIso::L, BWP::L);
+    if (selBJets_DRCut_BWP_CSVv2Ordered[idx_comb_b].size() >= 2) {
+
+
+    const float topMass = event.isRealData() ? 173.34 : 172.5;
+    const float topWidth = event.isRealData() ? 1.41 : 1.50833649;
+
+    const float wMass = event.isRealData() ? 80.385 : 80.419002;
+    const float wWidth = event.isRealData() ? 2.085 : 2.04759951;
+
+    std::vector<PhysicsObject> nonTopObjects;
+    // Fill the array of all jets non coming from the ttbar decay.
+    // Very naive asumption: we use all the light jets here (ie, non b-tagged)
+    
+    for (const auto& sel_jet: selJets_selID_DRCut[idx_comb]) {
+
+        // Iterate over all the good jets
+        // Exclude jets which are b-tagged
+
+        const auto& jet = selJets[sel_jet];
+
+        if (jet.BWP[BWP::L])
+            continue;
+
+
+        nonTopObjects.push_back({
+                PxPyPzELorentzVector(jet.p4),
+                0.1,
+                0.01,
+                0.01
+                });
+    }
+
+    topEventMinimizer m(nonTopObjects, topMass, topWidth, wMass, wWidth);
+
+    
+    PhysicsObject top_bjet {
+        PxPyPzELorentzVector(selJets[selBJets_DRCut_BWP_CSVv2Ordered[idx_comb_b][0]].p4),
+        0.1,
+        0.01,
+        0.01
+    };
+
+    PhysicsObject top_lepton {
+        PxPyPzELorentzVector(leptons[leptons_IDIso[idx_comb][0]].p4),
+        0.,
+        0.,
+        0.
+    };
+
+    m.addLeptonicTop(top_bjet, top_lepton);
+
+    PhysicsObject antitop_bjet {
+        PxPyPzELorentzVector(selJets[selBJets_DRCut_BWP_CSVv2Ordered[idx_comb_b][1]].p4),
+        0.1,
+        0.01,
+        0.01
+    };
+    
+    PhysicsObject antitop_lepton {
+        PxPyPzELorentzVector(leptons[leptons_IDIso[idx_comb][1]].p4),
+        0.,
+        0.,
+        0.
+    };
+
+    m.addLeptonicTop(antitop_bjet, antitop_lepton);
+
+    //m.initializeDeltas();
+    m.minimizeTotalChiSquare();
+
+    }
+    }
+    
 
     ///////////////////////////
     //       GEN INFO        //

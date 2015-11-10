@@ -4,14 +4,22 @@
 #include <vector>
 #include <limits>
 
-#include <Math/PtEtaPhiE4D.h>
-#include <Math/LorentzVector.h>
+#include <Math/Vector4D.h>
 #include <Math/VectorUtil.h>
 
 #include <cp3_llbb/TTAnalysis/interface/Indices.h>
 
 // Needed because of gcc bug when using typedef and std::map
 #define myLorentzVector ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiE4D<float>>
+
+using PxPyPzELorentzVector = ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<double>>;
+
+struct PhysicsObject {
+    PxPyPzELorentzVector p4;
+    double pt_width;
+    double eta_width;
+    double phi_width;
+};
 
 namespace TTAnalysis {
 
